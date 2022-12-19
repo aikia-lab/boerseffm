@@ -74,12 +74,16 @@ bond_information <- get_instrument_information(isin = "DE000DL40SR8")
 
 
 get_market_data <- function(isin, mic = "XFRA", content = "all", match_equity = FALSE) {
+    
+    bulk_isin <- URLencode(stringr::str_c(isin, collapse = ","))
+    
     params <- list(
-        "isin" = isin,
-        "mic" = mic
+        "isin" = bulk_isin,
+        "mic" = mic,
+        "status.ormode" = 1
     )
 
-    instrument_type <- get_instrument_statics(isin) |>
+    instrument_type <- get_instrument_statics(isin[1]) |>
         dplyr::filter(name == "instrumentTypeKey") |>
         dplyr::pull(value)
 
@@ -180,8 +184,39 @@ get_market_data <- function(isin, mic = "XFRA", content = "all", match_equity = 
 
 market_data <- get_market_data(isin = "DE000DL40SR8", match_equity = TRUE)
 
-# TODO
-# Equity Summary like bond
-# Single Security breakdown
 
-#isin <- c("DE000ENAG999", "DE0005140008")
+get_esg <- function(isin) {
+    
+    params <- list("isin" = isin)
+
+    response <- get_data(encode_url("instrument/get", params, type = "esg"))
+
+    esg <- jsonlite::fromJSON(rawToChar(response$content)) 
+    esg$researchDe
+    esg$reportingDe
+    if (is.null(esg$ratings)) {
+        cli::cli_alert_warning(
+            paste0("There are no ESG scores for ",isin,". Please select another security.")
+            )
+        return()
+    }
+
+    ratings <- tibble::tibble(esg$ratings) |> 
+        dplyr::mutate(isin = isin) |> 
+        janitor::clean_names() |> 
+        dplyr::select(isin, 
+                      ratings_provider_name, 
+                      ratings_score) |> 
+        tidyr::pivot_wider(names_from = ratings_provider_name,
+                           values_from = ratings_score) |> 
+        janitor::clean_names()
+
+    ratings$research <- unlist(esg["researchDe"])
+    ratings$reporting  <- unlist(esg["reportingDe"])
+    
+    return(ratings)
+}
+
+esg <- get_esg(isin = "DE000ENAG999")
+
+purrr::map_df(c("DE000ENAG999","DE000DL40SR8"), get_esg)

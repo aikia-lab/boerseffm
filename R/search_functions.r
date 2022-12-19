@@ -33,6 +33,3 @@ search_instrument <- function(search_term, instrument_type = "equity", n_results
 }
 
 #search_instrument(search_term = "Deutsche Bank", instrument_type = "all", n_results = 50)
-
-
-

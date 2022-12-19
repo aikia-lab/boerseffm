@@ -6,7 +6,8 @@
 # get_bulk_instruments("etp")
 # get_bulk_instruments("fund")
 get_bulk_instruments <- function(asset_class = "bond", 
-                                 n_instruments = 25) {
+                                 n_instruments = 25,
+                                 green_bond = FALSE) {
     base_url <- "https://api.boerse-frankfurt.de/v1/search/"
 
     valid_ac <- c("bond",
@@ -22,8 +23,16 @@ get_bulk_instruments <- function(asset_class = "bond",
     
     url <- paste0(base_url, asset_class, "_search")
     
+    if (green_bond & asset_class != "bond") {
+        cli::cli_alert_info(
+            paste0("green_bond = TRUE with asset class other than bond is superfluous.")
+            )
+    }
+
+    green_bond_indicator <- tolower(green_bond)
     # Body for POST request, maybe check other possible options like sort by performance
-    data <- stringr::str_c('{
+    data <- paste0('{
+                "greenBond":', green_bond_indicator, ',
                 "lang":"de",
                 "offset":0,
                 "limit":', n_instruments, ',
@@ -60,11 +69,4 @@ get_bulk_instruments <- function(asset_class = "bond",
     return(content_subsetted)
 }
 
-### Doesnt work for now or just needs hours to run. But data is available on website
-get_index_realtime <- function(index_isin = "DE0008469008") {
-
-    params  <- list(isin = index_isin)
-
-    response <- get_data(encode_url("equities_frankfurt_realtime_quotes", params))
-
-}
+get_bulk_instruments(green_bond = TRUE, asset_class = "equity")
