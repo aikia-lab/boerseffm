@@ -32,4 +32,13 @@ search_instrument <- function(search_term, instrument_type = "equity", n_results
     
 }
 
-search_instrument("Deutsche Bank", instrument_type = "all")
+search_instrument(search_term = "Deutsche Bank", instrument_type = "all", n_results = 50)
+
+encode_url(paste0(instrument_type, "/de"), params, type = "instrument_search")
+rm(base_url)
+
+
+url <- paste0(instrument_type, "/de")
+params  <- params
+type  <-  "instrument_search"
+instrument_type  <- "bond"

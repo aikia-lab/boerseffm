@@ -1,13 +1,17 @@
 # Helper functions
 
-encode_url <- function (url, params, type = "data") {
-    
-    if (type == "data"){
-    url_base <- paste0("https://api.boerse-frankfurt.de/v1/data/", url)
-    } else if (type == "bond_api"){
-       url_base <- paste0("https://api.boerse-frankfurt.de/v1/bonds/api/v1/", url)
+encode_url <- function(endpoint, params, type = "data") {
+
+    if (type == "data") {
+       url_base <- paste0("https://api.boerse-frankfurt.de/v1/data/", endpoint)
+    } else if (type == "bond_api") {
+       url_base <- paste0("https://api.boerse-frankfurt.de/v1/bonds/api/v1/", endpoint)
+    } else if (type == "search") {
+        url_base <- paste0("https://api.boerse-frankfurt.de/v1/search/", endpoint)
+    } else if (type == "instrument_search") {
+        url_base <- paste0("https://api.boerse-frankfurt.de/v1/global_search/pagedsearch/", endpoint)
     }
-    
+
     full_url <- paste0(url_base, "?", paste0(names(params), "=", params, 
         collapse = "&"))
         
@@ -69,11 +73,12 @@ create_headers <- function(url) {
 
 # Gets the Data per curl GET.
 # Does this work with post? It may not
-get_data <- function(url) {
+get_data <- function(url, ...) {
     
     response <- httr::GET(
         url,
-        httr::add_headers(.headers = create_headers(url))
+        httr::add_headers(.headers = create_headers(url),
+        ...)
     )
 
     return(response)
