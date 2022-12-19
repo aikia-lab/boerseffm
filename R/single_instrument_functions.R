@@ -70,10 +70,10 @@ get_instrument_information <- function(isin) {
 
 }
 
-get_instrument_information(isin = "DE0005140008")
+bond_information <- get_instrument_information(isin = "DE000DL40SR8")
 
 
-get_market_data <- function(isin, mic = "XFRA", content = "all") {
+get_market_data <- function(isin, mic = "XFRA", content = "all", match_equity = FALSE) {
     params <- list(
         "isin" = isin,
         "mic" = mic
@@ -132,11 +132,24 @@ get_market_data <- function(isin, mic = "XFRA", content = "all") {
         }
     }
 
+    if (match_equity == TRUE) {
+        issuer <- get_instrument_information(isin) |> 
+            dplyr::filter(name == "issuer") |> 
+            dplyr::pull(value)
+
+        corresponding_equity <- search_instrument(issuer) |> 
+            dplyr::select(isin_equity = isin, symbol, slug) |> 
+            dplyr::mutate(isin = isin)
+
+        output <- output |> 
+            dplyr::left_join(corresponding_equity, by = "isin")
+    }
+
     output <- subset(output, select = which(!duplicated(names(output))))
     return(output)
 }
 
-market_data <- get_market_data(isin = "DE000DL40SR8")
+market_data <- get_market_data(isin = "DE000DL40SR8", match_equity = TRUE)
 
 # TODO
 # Equity Summary like bond
