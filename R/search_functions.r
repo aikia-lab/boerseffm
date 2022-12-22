@@ -3,13 +3,15 @@ search_instrument <- function(search_term, instrument_type = "equity", n_results
   valid_instrument_type <- c("equity", "bond", "derivative", "future")
 
   params <- list(
-    "searchTerms" = URLencode(search_term),
+    "searchTerms" = URLencode(search_term, reserved = TRUE),
     page = 1,
     pageSize = n_results
   )
 
   search_helper <- function(instrument_type, params) {
-    response <- suppressWarnings(get_data(encode_url(paste0(instrument_type, "/de"), params, type = "instrument_search")))
+    response <- suppressWarnings(
+      get_data(encode_url(paste0(instrument_type, "/de"), params, type = "instrument_search"))
+      )
     result <- jsonlite::fromJSON(rawToChar(response$content))$result |>
       dplyr::as_tibble() |>
       unnest_json()

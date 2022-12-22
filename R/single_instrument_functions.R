@@ -67,6 +67,7 @@ get_instrument_information <- function(isin) {
   return(output)
 }
 
+
 bond_information <- get_instrument_information(isin = "DE000DL40SR8")
 
 
@@ -139,26 +140,26 @@ get_market_data <- function(isin, mic = "XFRA", content = "all", match_equity = 
         dplyr::mutate(
           dplyr::across(tidyselect::contains("time"), lubridate::ymd_hms),
           dplyr::across(c(first_annual_pay_date, start_interest_payment), lubridate::ymd),
-          dplyr::across(
+          suppressWarnings(dplyr::across(
             c(
               tidyselect::where(is.character),
               -c(isin, nominal, trading_status, instrument_status),
               -tidyselect::contains("interest_payment_cycle")
             ),
             as.numeric
-          )
+          ))
         )
     } else if (instrument_type == "equity") {
       output <- purrr::reduce(list(price, metrics, performance), dplyr::left_join, by = "isin") |>
         dplyr::mutate(
           dplyr::across(tidyselect::contains("time"), lubridate::ymd_hms),
-          dplyr::across(
+          suppressWarnings(dplyr::across(
             c(
               tidyselect::where(is.character),
               -c(isin, nominal, trading_status, instrument_status)
             ),
             as.numeric
-          )
+          ))
         )
     }
   } else if (content == "performance") {
@@ -171,16 +172,50 @@ get_market_data <- function(isin, mic = "XFRA", content = "all", match_equity = 
     output <- interest
   }
 
-
+  # Equity Matching
   if (match_equity == TRUE) {
     issuer <- get_instrument_information(isin) |>
       dplyr::filter(name == "issuer") |>
       dplyr::pull(value)
+    
+    issuer_slug <- gsub("[^A-Za-z0-9-]", " ", issuer)
+    issuer_slug <- gsub("\\s+", " ", issuer_slug)
+    issuer_slug <- tolower(gsub("\\s", "-", issuer_slug))
+  
 
     corresponding_equity <- search_instrument(issuer) |>
       dplyr::select(isin_equity = isin, symbol, slug) |>
       dplyr::mutate(isin = isin)
 
+    if (nrow(corresponding_equity) > 1 && any(corresponding_equity$slug == issuer_slug)) {
+      
+      corresponding_equity <- corresponding_equity[corresponding_equity$slug == issuer_slug,]
+
+      cat(cli::col_br_cyan("More than one equity found, but one has an identic slug:\n"))
+      cat(cli::col_br_green(corresponding_equity$isin_equity), "with slug",
+          cli::col_br_green(corresponding_equity$slug), "\n")
+
+    } else if (nrow(corresponding_equity) > 1) {
+      
+    string_distances <- as.vector(adist(issuer_slug, corresponding_equity$slug))
+    nearest_match_id <- which(string_distances == min(string_distances))
+    corresponding_equity <- corresponding_equity[nearest_match_id, ]   
+    
+    cat(cli::col_br_cyan("More than one equity found, returning the nearest match:"))
+    cat(cli::col_br_green(corresponding_equity$isin_equity), "with match distance",
+        cli::col_br_green(min(string_distances)))
+
+    } else if (nrow(corresponding_equity) == 0) {
+
+    cat(cli::cli_alert_warning("No corresponding equities found, returning NA"))
+
+    corresponding_equity <- tibble::tibble(isin_equity = NA_character_,
+                                           symbol = NA_character_,
+                                           slug = NA_character_,
+                                           isin = NA_character_)
+
+    } 
+    
     output <- output |>
       dplyr::left_join(corresponding_equity, by = "isin")
   }
@@ -189,8 +224,9 @@ get_market_data <- function(isin, mic = "XFRA", content = "all", match_equity = 
   return(output)
 }
 
-market_data <- get_market_data(isin = "DE000DL40SR8", match_equity = TRUE)
+market_data <- get_market_data(isin = "AT0000A2N7T2", match_equity = TRUE)
 
+isin = "AT0000A2N7T2"
 
 get_esg <- function(isin) {
   params <- list("isin" = isin)
@@ -226,6 +262,9 @@ get_esg <- function(isin) {
 
   return(ratings)
 }
+
+
+
 
 esg <- get_esg(isin = "DE000ENAG999")
 
